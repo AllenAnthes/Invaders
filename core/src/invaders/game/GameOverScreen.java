@@ -31,7 +31,7 @@ public class GameOverScreen implements Screen {
 
     private OrthographicCamera camera;
 
-    public GameOverScreen(final Invaders game) {
+    GameOverScreen(final Invaders game) {
         this.game = game;
 
         camera = new OrthographicCamera();
@@ -77,8 +77,8 @@ public class GameOverScreen implements Screen {
 
         if (Gdx.input.isKeyPressed(Input.Keys.ENTER)) {
             dispose();
-            //System.exit(0);       // TODO: HTML deployment doesn't like this for some reason
-                                    // TODO: find out why
+            System.exit(0);       // TODO: HTML deployment doesn't like this for some reason
+                                        // TODO: find out why
 
         }
         if (Gdx.input.isKeyPressed(Input.Keys.N)) {
