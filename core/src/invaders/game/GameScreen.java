@@ -90,7 +90,6 @@ public class GameScreen implements Screen {
     private Array<Sprite> playerShots;
     private Array<Sprite> enemyShots;
 
-
     GameScreen(final Invaders game) {
         this.game = game;
 
@@ -266,26 +265,28 @@ public class GameScreen implements Screen {
             gameoverSound.play(0.2f);
             gameOver = true;
         }
+
+        // recreate level if all enemies killed
+        // TODO: Make this more interesting.  Maybe keep walls destroyed?  Faster enemies?
         if (enemies.size == 0 ) {
-            ufoSound.stop();
+            ufoSound.stop(); //  stop ufo sound if playing
             game.setScreen(new GameScreen(game));
-            //gameOver = true;
             gameWinSound.play(0.2f);
         }
 
         if (gameOver) {
-            ufoSound.stop();  //  stop ufo sound if playing
+            ufoSound.stop();
             game.setScreen(new GameOverScreen(game));
             dispose();
         }
 
         if (dead && lives >= 0) {
-            //spawnPlayer();
             playerHitSound.play();
             dead = false;
             lives -= 1;
             makeInvincible();
         }
+
         // Clear screen
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
 
@@ -313,7 +314,6 @@ public class GameScreen implements Screen {
             game.batch.draw(shot, shot.getX(), shot.getY());
         for (Sprite shot : enemyShots)
             game.batch.draw(shot, shot.getX(), shot.getY());
-        // render walls
         for (Rectangle wall : wallList)
             game.batch.draw(green,wall.getX(), wall.getY(),1,1);
         explosionPartEffect.draw(game.batch);
@@ -330,7 +330,7 @@ public class GameScreen implements Screen {
             if (TimeUtils.millis() - lastShotTime > shootSpeed) playerShoot();
         }
         if (Gdx.input.isKeyPressed(Keys.ENTER)) gameOver = true;
-        // activate debug/cheat mode aka dad mode
+        // activate debug/cheat mode
         if (Gdx.input.isKeyPressed(Keys.F1)) shootSpeed = 200;
         if (Gdx.input.isKeyPressed(Keys.F2)) shootSpeed = 100;
         if (Gdx.input.isKeyPressed(Keys.F3)) shootSpeed = 50;
@@ -341,6 +341,7 @@ public class GameScreen implements Screen {
         if (playerSprite.getX() > SCREEN_WIDTH - playerSprite.getWidth()) playerSprite.setX(SCREEN_WIDTH - playerSprite.getWidth());
 
         // handle player shot movement
+        wallCollisions(playerShots);
         for (Sprite shot : playerShots) {
             shot.setY(shot.getY() + 400 * Gdx.graphics.getDeltaTime());
             if (shot.getY() > SCREEN_HEIGHT)
@@ -349,18 +350,18 @@ public class GameScreen implements Screen {
             // UFO hit
             if (shot.getBoundingRectangle().overlaps(ufo.getBoundingRectangle())) {
                 score += 300;
-                explosion.play(0.2f);
-                ufoUP = false;
                 ufoTimer = TimeUtils.millis();
-                ufoSound.pause();
+                explosion.play(0.2f);
                 ufoDeathPartEffect.setPosition(ufo.getX(), ufo.getY());
                 ufoDeathPartEffect.start();
+                ufoSound.pause();
+                ufoUP = false;
                 ufo.setX(-50);
             }
         }
-        wallCollisions(playerShots);
 
         // handle enemy shot movement
+        wallCollisions(enemyShots);
         for (Sprite shot : enemyShots) {
             shot.setY(shot.getY() - 300 * Gdx.graphics.getDeltaTime());
             if (shot.getY() < 0)
@@ -370,7 +371,6 @@ public class GameScreen implements Screen {
                 enemyShots.removeValue(shot, true);
             }
         }
-        wallCollisions(enemyShots);
 
         // handle player invincibility after being shot
         if (invincible) {
@@ -412,7 +412,7 @@ public class GameScreen implements Screen {
                     invaderDeathPartEffect.setDuration(1);
                     invaderDeathPartEffect.start();
                     if (enemy.getTexture() == smallInvaderDown || enemy.getTexture() == smallInvaderUp) score += 40;
-                    if (enemy.getTexture() == bigInvaderDown || enemy.getTexture() == bigInvaderUp)     score += 40;
+                    if (enemy.getTexture() == bigInvaderDown || enemy.getTexture() == bigInvaderUp)     score += 30;
 
             }
             // move enemies
@@ -473,6 +473,8 @@ public class GameScreen implements Screen {
         // spawn UFO quasi-randomly if 5 seconds has gone by and it is not up
         if (TimeUtils.millis() - ufoTimer > 5000 && !ufoUP) {
             randint = rand.nextInt(500);
+
+            // choose UFO starting side
             if (randint == 1) {
                 if (rand.nextInt(2) == 0) {
                     ufo.setPosition(SCREEN_WIDTH - 15, SCREEN_HEIGHT - 40);

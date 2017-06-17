@@ -12,13 +12,13 @@ import static invaders.game.Invaders.SCREEN_WIDTH;
 
 public class MainMenuScreen implements Screen {
 
-    final Invaders game;
+    private final Invaders game;
 
-    OrthographicCamera camera;
+    private OrthographicCamera camera;
     private Texture titleImage;
 
 
-    public MainMenuScreen(final Invaders game) {
+    MainMenuScreen(final Invaders game) {
 
         this.game = game;
 

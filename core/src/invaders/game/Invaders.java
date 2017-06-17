@@ -7,8 +7,8 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 
 public class Invaders extends Game {
 
-	public SpriteBatch batch;
-	public BitmapFont font;
+	SpriteBatch batch;
+	BitmapFont font;
 	public static int SCREEN_WIDTH = 640;
 	public static int SCREEN_HEIGHT = 480;
 

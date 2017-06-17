@@ -7,11 +7,8 @@ import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
-import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
 import com.badlogic.gdx.utils.Align;
-import com.badlogic.gdx.utils.viewport.ScreenViewport;
-
 
 import static invaders.game.GameScreen.score;
 import static invaders.game.GameScreen.lives;
@@ -27,8 +24,6 @@ public class GameOverScreen implements Screen {
     private Label goLbl;
     private Label scoreLbl;
     private Label againLbl;
-
-
     private OrthographicCamera camera;
 
     GameOverScreen(final Invaders game) {
@@ -52,19 +47,15 @@ public class GameOverScreen implements Screen {
     }
 
     @Override
-    public void show() {
-
-    }
-
-    @Override
     public void render(float delta) {
 
         Gdx.gl.glClearColor(1, 1, 1, 1);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
 
-
         camera.update();
         game.batch.setProjectionMatrix(camera.combined);
+
+        // render background and text
         game.batch.begin();
         game.batch.disableBlending();
         game.batch.draw(backgroundImg,0,0,0,0,SCREEN_WIDTH,SCREEN_HEIGHT);
@@ -74,18 +65,23 @@ public class GameOverScreen implements Screen {
         againLbl.draw(game.batch, 1);
         game.batch.end();
 
-
+        // quit game
         if (Gdx.input.isKeyPressed(Input.Keys.ENTER)) {
             dispose();
-            System.exit(0);       // TODO: HTML deployment doesn't like this for some reason
+            System.exit(0);      // TODO: HTML deployment doesn't like this for some reason
                                         // TODO: find out why
 
         }
+        // restart game
         if (Gdx.input.isKeyPressed(Input.Keys.N)) {
             game.setScreen(new GameScreen(game));
             lives = 3;
             score = 0;
         }
+    }
+
+    @Override
+    public void show() {
 
     }
 
