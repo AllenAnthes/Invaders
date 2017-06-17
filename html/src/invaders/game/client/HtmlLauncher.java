@@ -8,6 +8,8 @@ import invaders.game.Invaders;
 import static invaders.game.Invaders.SCREEN_HEIGHT;
 import static invaders.game.Invaders.SCREEN_WIDTH;
 
+// TODO: All messed up on HTML.  Enemy lasers are black.  Game crashes on game over.  At least it compiles now.
+
 public class HtmlLauncher extends GwtApplication {
 
         @Override

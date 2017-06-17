@@ -39,10 +39,10 @@ public class GameScreen implements Screen {
 
     private Random rand;
 
-    private Sound explosion;
-    private Sound photon;
+    private Sound explosionSound;
+    private Sound playerShotSound;
     private Sound ufoSound;
-    private Sound wallhit;
+    private Sound wallHitSound;
     private Sound gameoverSound;
     private Sound playerHitSound;
     private Sound invaderSound1;
@@ -101,10 +101,10 @@ public class GameScreen implements Screen {
         backgroundImg.setWrap(Texture.TextureWrap.Repeat, Texture.TextureWrap.Repeat);
 
         // load sound files
-        explosion = Gdx.audio.newSound(Gdx.files.internal("sounds/invaderkilled.wav"));
-        photon = Gdx.audio.newSound(Gdx.files.internal("sounds/shoot.wav"));
+        explosionSound = Gdx.audio.newSound(Gdx.files.internal("sounds/invaderkilled.wav"));
+        playerShotSound = Gdx.audio.newSound(Gdx.files.internal("sounds/shoot.wav"));
         ufoSound = Gdx.audio.newSound(Gdx.files.internal("sounds/ufo_highpitch.wav"));
-        wallhit = Gdx.audio.newSound(Gdx.files.internal("sounds/explosion.wav"));
+        wallHitSound = Gdx.audio.newSound(Gdx.files.internal("sounds/explosion.wav"));
         gameoverSound = Gdx.audio.newSound(Gdx.files.internal("sounds/pacman_death.wav"));
         playerHitSound = Gdx.audio.newSound(Gdx.files.internal("sounds/atari_boom5.wav"));
         invaderSound1 = Gdx.audio.newSound(Gdx.files.internal("sounds/invader1.wav"));
@@ -224,7 +224,7 @@ public class GameScreen implements Screen {
         Sprite pew = new Sprite(shotUp,10, 15);
         pew.setPosition(playerSprite.getX() + playerSprite.getWidth() / 2 - 4,50);
         playerShots.add(pew);
-        photon.play(0.2f);
+        playerShotSound.play(0.2f);
         lastShotTime = TimeUtils.millis();
     }
 
@@ -236,7 +236,8 @@ public class GameScreen implements Screen {
         lastEnemyShot = TimeUtils.millis();
     }
     /** Handle play and enemy shot and wall collisions
-     *  TODO: Search could be optimized
+     *  TODO: Search could be optimized.  Maybe different arrays for each wall, check x position first, then
+     *  TODO: iterate through single wall.
      */
     private void wallCollisions(Array<Sprite> spriteArray) {
         for (Sprite sprite : spriteArray) {
@@ -245,14 +246,14 @@ public class GameScreen implements Screen {
                     for (int i = 0; i < wallList.size; i++)
                         // destroy wall pixels in area around hit, more in y direction for sense of upward or downward impact
                         // TODO: Could implement more sophisticated algorithm for blast radius
-                        if (Math.abs(wallList.get(i).getX() - wall.getX()) < 6 && Math.abs(wallList.get(i).getY() - wall.getY()) < 8)
+                        if (Math.abs(wallList.get(i).getX() - wall.getX()) < 8 && Math.abs(wallList.get(i).getY() - wall.getY()) < 9)
                             wallList.removeIndex(i);
                     explosionPartEffect.setPosition(wall.getX(), wall.getY());
                     explosionPartEffect.setDuration(1);
                     explosionPartEffect.start();
                     spriteArray.removeValue(sprite, true);
                     wallList.removeValue(wall, true);
-                    wallhit.play(0.2f);
+                    wallHitSound.play(0.2f);
                 }
             }
         }
@@ -267,7 +268,7 @@ public class GameScreen implements Screen {
         }
 
         // recreate level if all enemies killed
-        // TODO: Make this more interesting.  Maybe keep walls destroyed?  Faster enemies?
+        // TODO: Make this more interesting.  Maybe keep walls destroyed?  Faster enemies?  Enemies shoot faster?
         if (enemies.size == 0 ) {
             ufoSound.stop(); //  stop ufo sound if playing
             game.setScreen(new GameScreen(game));
@@ -351,7 +352,7 @@ public class GameScreen implements Screen {
             if (shot.getBoundingRectangle().overlaps(ufo.getBoundingRectangle())) {
                 score += 300;
                 ufoTimer = TimeUtils.millis();
-                explosion.play(0.2f);
+                explosionSound.play(0.2f);
                 ufoDeathPartEffect.setPosition(ufo.getX(), ufo.getY());
                 ufoDeathPartEffect.start();
                 ufoSound.pause();
@@ -403,12 +404,12 @@ public class GameScreen implements Screen {
             // check for player shot and enemy collisions
             for (Sprite shot: playerShots)
                 if (shot.getBoundingRectangle().overlaps(enemy.getBoundingRectangle())) {
-                    explosion.play(0.2f);
+                    explosionSound.play(0.2f);
                     enemies.removeValue(enemy,true);
                     playerShots.removeValue(shot, true);
                     enemyVelocity +=1;
                     killCounter +=1;
-                    invaderDeathPartEffect.setPosition(enemy.getX(),enemy.getY());
+                    invaderDeathPartEffect.setPosition(enemy.getX() + enemy.getWidth() / 2,enemy.getY() + enemy.getHeight() / 2);
                     invaderDeathPartEffect.setDuration(1);
                     invaderDeathPartEffect.start();
                     if (enemy.getTexture() == smallInvaderDown || enemy.getTexture() == smallInvaderUp) score += 40;
@@ -437,7 +438,6 @@ public class GameScreen implements Screen {
                 direction = -1;
                 down = true;
             }
-
         }
         // move enemies down if down flag is set
         if (down) {
@@ -498,8 +498,8 @@ public class GameScreen implements Screen {
                 ufo.setX(-50);
                 ufoSound.pause();
             }
-            // move ufo light every 0.5 seconds
-            if (TimeUtils.millis() - ufoChangeTime > 500) {
+            // move ufo light every 0.1 seconds
+            if (TimeUtils.millis() - ufoChangeTime > 100) {
                 if (ufo.getTexture() == ufo0)
                     ufo.setTexture(ufo1);
                 else if (ufo.getTexture() == ufo1)
@@ -547,12 +547,12 @@ public class GameScreen implements Screen {
         smallInvaderUp.dispose();
         bigInvaderDown.dispose();
         bigInvaderDown.dispose();
-        explosion.dispose();
-        photon.dispose();
+        explosionSound.dispose();
+        playerShotSound.dispose();
         shotDown.dispose();
         shotUp.dispose();
         green.dispose();
-        wallhit.dispose();
+        wallHitSound.dispose();
         ufo0.dispose();
         ufo1.dispose();
         ufo2.dispose();

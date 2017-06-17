@@ -68,8 +68,7 @@ public class GameOverScreen implements Screen {
         // quit game
         if (Gdx.input.isKeyPressed(Input.Keys.ENTER)) {
             dispose();
-            System.exit(0);      // TODO: HTML deployment doesn't like this for some reason
-                                        // TODO: find out why
+            Gdx.app.exit();
 
         }
         // restart game
