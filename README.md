@@ -1,6 +1,6 @@
 # Invaders
 Created by: Allen Anthes<br>
-Inspired by original Space Invaders by the Taito Corporation
+Remake of original Space Invaders by the Taito Corporation
 
 # Build Executible
 For windows open a command prompt and navigate to main project folder using <br>
