@@ -10,15 +10,28 @@ import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.ParticleEffect;
 import com.badlogic.gdx.graphics.g2d.Sprite;
 import com.badlogic.gdx.math.Rectangle;
-import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.TimeUtils;
 
-import java.util.Random;
+import java.util.*;
 
 import static invaders.game.Invaders.SCREEN_HEIGHT;
 import static invaders.game.Invaders.SCREEN_WIDTH;
 
 public class GameScreen implements Screen {
+
+    private static final int MILLIS_BETWEEN_ENEMY_SHOTS = 400;
+    private static final int ENEMY_PLAYER_OVERLAP_HEIGHT = 10;
+    private static final int KILL_COUNTER_HIGH = 63;
+    private static final int KILL_COUNTER_MEDIUM = 56;
+    private static final int ENEMY_HIGH_VELOCITY = 100;
+    private static final int RIGHT = 1;
+    private static final int LEFT = -1;
+    private static final int INVINCIBILITY_TIME = 3000;
+    private static final int FLASH_TIME = 100;
+    private static final int MILLIS_BETWEEN_UFO_SPAWNS = 5000;
+    private static final int RANDOM_UFO_SPAWN_CHANCE = 500;
+    private static final float LOW_VOLUME = 0.2f;
+    private static final float MEDIUM_VOLUME = 0.05f;
     private final Invaders game;
 
     static int score = 0;
@@ -37,13 +50,11 @@ public class GameScreen implements Screen {
     private boolean invincible;
     private boolean gameOver;
 
-    private Random rand;
-
     private Sound explosionSound;
     private Sound playerShotSound;
     private Sound ufoSound;
     private Sound wallHitSound;
-    private Sound gameoverSound;
+    private Sound gameOverSound;
     private Sound playerHitSound;
     private Sound invaderSound1;
     private Sound invaderSound2;
@@ -57,7 +68,7 @@ public class GameScreen implements Screen {
     private long ufoTimer;
     private long ufoChangeTime;
     private long invincibleTimer;
-    private long flashtimer;
+    private long flashTimer;
     private long invaderSoundTracker;
 
     private Texture bigInvaderDown;
@@ -85,17 +96,15 @@ public class GameScreen implements Screen {
     private ParticleEffect invaderDeathPartEffect;
     private ParticleEffect ufoDeathPartEffect;
 
-    private Array<Sprite> enemies;
-    private Array<Rectangle> wallList;
-    private Array<Sprite> playerShots;
-    private Array<Sprite> enemyShots;
+    private ArrayList<Sprite> enemies;
+    private List<Rectangle> wallList;
+    private List<Sprite> playerShots;
+    private List<Sprite> enemyShots;
 
     GameScreen(final Invaders game) {
         this.game = game;
 
         dead = false;
-        rand = new Random();
-
         // load background image
         backgroundImg = new Texture(Gdx.files.internal("space.gif"));
         backgroundImg.setWrap(Texture.TextureWrap.Repeat, Texture.TextureWrap.Repeat);
@@ -105,7 +114,7 @@ public class GameScreen implements Screen {
         playerShotSound = Gdx.audio.newSound(Gdx.files.internal("sounds/shoot.wav"));
         ufoSound = Gdx.audio.newSound(Gdx.files.internal("sounds/ufo_highpitch.wav"));
         wallHitSound = Gdx.audio.newSound(Gdx.files.internal("sounds/explosion.wav"));
-        gameoverSound = Gdx.audio.newSound(Gdx.files.internal("sounds/pacman_death.wav"));
+        gameOverSound = Gdx.audio.newSound(Gdx.files.internal("sounds/pacman_death.wav"));
         playerHitSound = Gdx.audio.newSound(Gdx.files.internal("sounds/atari_boom5.wav"));
         invaderSound1 = Gdx.audio.newSound(Gdx.files.internal("sounds/invader1.wav"));
         invaderSound2 = Gdx.audio.newSound(Gdx.files.internal("sounds/invader2.wav"));
@@ -122,18 +131,13 @@ public class GameScreen implements Screen {
 
         // wall files
         green = new Texture(Gdx.files.internal("green.png"));
-        wallList = new Array<Rectangle>();
+        wallList = new ArrayList<>();
         explosionPartEffect = new ParticleEffect();
         explosionPartEffect.load(Gdx.files.internal("explosionPartEffect.p"), Gdx.files.internal("img"));
         invaderDeathPartEffect = new ParticleEffect();
         invaderDeathPartEffect.load(Gdx.files.internal("invaderdeath.p"), Gdx.files.internal("img"));
         ufoDeathPartEffect = new ParticleEffect();
         ufoDeathPartEffect.load(Gdx.files.internal("ufoDeathPart.p"), Gdx.files.internal("img"));
-
-        addWall(50);
-        addWall(200);
-        addWall(350);
-        addWall(500);
 
         // create camera
         camera = new OrthographicCamera();
@@ -164,7 +168,7 @@ public class GameScreen implements Screen {
         invaderSoundTracker = 1;
 
         // spawn initial enemies
-        enemies = new Array<Sprite>();
+        enemies = new ArrayList<>();
         for (int row = 0; row < 5; row++) {
             for (int column = 0; column < 12; column++) {
                 if (row < 3) spawnBigInvader(150 + column * 30, 350 + row * 25);
@@ -180,15 +184,26 @@ public class GameScreen implements Screen {
         playerSprite.setCenter(SCREEN_WIDTH / 2, 25);
         gameOver = false;
         shootSpeed = 350;
-
-        playerShots = new Array<Sprite>();
-        enemyShots = new Array<Sprite>();
+        playerShots = new ArrayList<>();
+        enemyShots = new ArrayList<>();
+        addWalls();
     }
 
-    private void makeInvincible() {
-        invincible = true;
-        invincibleTimer = TimeUtils.millis();
-        flashtimer = TimeUtils.millis();
+    //TODO: Get rid of magic numbers here.  This is also still ugly as hell
+    private void addWalls() {
+        int[] starts = {50, 200, 350, 500};
+        for (int startX : starts) {
+            int startY = 70;
+            for (int row = 0; row < 35; row++) {
+                for (int column = 0; column < 70; column++) {
+                    // skip pixels for the gaps to make arch
+                    if ((row < 10 && column > 10 && column < 60) ||
+                            (row < 20 && column > 20 && column < 50) || (row < 30 && column > 30 && column < 40))
+                        continue;
+                    wallList.add(new Rectangle(startX + column, startY + row, 1, 1));
+                }
+            }
+        }
     }
 
     private void spawnBigInvader(int xPos, int yPos) {
@@ -203,76 +218,33 @@ public class GameScreen implements Screen {
         enemies.add(smallInvader);
     }
 
-    private void addWall(int startX) {
-
-        int startY = 70;
-        for (int row = 0; row < 35; row ++) {
-            for (int column = 0; column < 70; column++) {
-
-                // skip pixels for the gaps to make arch
-                if ((row < 10 && column > 10 && column < 60) ||
-                    (row < 20 && column > 20 && column < 50) || (row < 30 && column > 30 && column < 40))
-                    continue;
-                wallList.add(new Rectangle(startX + column, startY + row,1,1
-                ));
-            }
-        }
-    }
-
-    /** When called create new laser at player position and add to list  */
-    private void playerShoot() {
-        Sprite pew = new Sprite(shotUp,10, 15);
-        pew.setPosition(playerSprite.getX() + playerSprite.getWidth() / 2 - 4,50);
-        playerShots.add(pew);
-        playerShotSound.play(0.2f);
-        lastShotTime = TimeUtils.millis();
-    }
-
-    /** When called create new laser at given enemy position and add to list  */
-    private void enemyShoot(Sprite enemy) {
-        Sprite pew = new Sprite(shotDown, 10, 15);
-        pew.setPosition(enemy.getX(), enemy.getY() -5);
-        enemyShots.add(pew);
-        lastEnemyShot = TimeUtils.millis();
-    }
-    /** Handle play and enemy shot and wall collisions
-     *  TODO: Search could be optimized.  Maybe different arrays for each wall, check x position first, then
-     *  TODO: iterate through single wall.
-     */
-    private void wallCollisions(Array<Sprite> spriteArray) {
-        for (Sprite sprite : spriteArray) {
-            for (Rectangle wall : wallList) {
-                if (sprite.getBoundingRectangle().overlaps(wall)) {
-                    for (int i = 0; i < wallList.size; i++)
-                        // destroy wall pixels in area around hit, more in y direction for sense of upward or downward impact
-                        // TODO: Could implement more sophisticated algorithm for blast radius
-                        if (Math.abs(wallList.get(i).getX() - wall.getX()) < 8 && Math.abs(wallList.get(i).getY() - wall.getY()) < 9)
-                            wallList.removeIndex(i);
-                    explosionPartEffect.setPosition(wall.getX(), wall.getY());
-                    explosionPartEffect.setDuration(1);
-                    explosionPartEffect.start();
-                    spriteArray.removeValue(sprite, true);
-                    wallList.removeValue(wall, true);
-                    wallHitSound.play(0.2f);
-                }
-            }
-        }
-    }
-    /** graphics rendering and primary loop function */
+    //graphics rendering and primary loop function
     @Override
     public void render(float delta) {
 
+        checkIfGameOver();
+        renderingSetup(delta);
+        renderImages();
+        processUserInput();
+        checkPlayerBounds();
+        handlePlayerShots();
+        handleEnemyShots();
+        checkInvincibility();
+        animateEnemies();
+        handleUFO();
+    }
+
+    private void checkIfGameOver() {
         if (dead && lives < 1) {
-            gameoverSound.play(0.2f);
+            gameOverSound.play(LOW_VOLUME);
             gameOver = true;
         }
 
-        // recreate level if all enemies killed
         // TODO: Make this more interesting.  Maybe keep walls destroyed?  Faster enemies?  Enemies shoot faster?
-        if (enemies.size == 0 ) {
+        if (enemies.size() == 0 ) {
             ufoSound.stop(); //  stop ufo sound if playing
             game.setScreen(new GameScreen(game));
-            gameWinSound.play(0.2f);
+            gameWinSound.play(LOW_VOLUME);
         }
 
         if (gameOver) {
@@ -282,25 +254,28 @@ public class GameScreen implements Screen {
         }
 
         if (dead && lives >= 0) {
-            playerHitSound.play();
+            playerHitSound.play(LOW_VOLUME);
             dead = false;
             lives -= 1;
             makeInvincible();
         }
+    }
+    private void makeInvincible() {
+        invincible = true;
+        invincibleTimer = TimeUtils.millis();
+        flashTimer = TimeUtils.millis();
+    }
 
-        // Clear screen
+    private void renderingSetup(float delta) {
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
-
-        // update camera matrices and effects
         camera.update();
         explosionPartEffect.update(delta);
         invaderDeathPartEffect.update(delta);
         ufoDeathPartEffect.update(delta);
-
-        // set SpriteBatch render reference coordinate system
         game.batch.setProjectionMatrix(camera.combined);
+    }
 
-        // send batch to GPU for rendering
+    private void renderImages() {
         game.batch.begin();
         game.batch.disableBlending();
         game.batch.draw(backgroundImg, 0,0,0,0, SCREEN_WIDTH, SCREEN_HEIGHT);
@@ -323,8 +298,9 @@ public class GameScreen implements Screen {
         if (ufoUP)
             game.batch.draw(ufo,ufo.getX(), ufo.getY());
         game.batch.end();
+    }
 
-        // user input processing
+    private void processUserInput() {
         if (Gdx.input.isKeyPressed(Keys.LEFT)) playerSprite.setX(playerSprite.getX() - 200 * Gdx.graphics.getDeltaTime());
         if (Gdx.input.isKeyPressed(Keys.RIGHT)) playerSprite.setX(playerSprite.getX() + 200 * Gdx.graphics.getDeltaTime());
         if (Gdx.input.isKeyPressed(Keys.SPACE)) {
@@ -336,106 +312,204 @@ public class GameScreen implements Screen {
         if (Gdx.input.isKeyPressed(Keys.F2)) shootSpeed = 100;
         if (Gdx.input.isKeyPressed(Keys.F3)) shootSpeed = 50;
         if (Gdx.input.isKeyPressed(Keys.F8)) lives = 10;
+    }
 
-        // set user bounds
+    private void playerShoot() {
+        Sprite pew = new Sprite(shotUp,10, 15);
+        pew.setPosition(playerSprite.getX() + playerSprite.getWidth() / 2 - 4,50);
+        playerShots.add(pew);
+        playerShotSound.play(LOW_VOLUME);
+        lastShotTime = TimeUtils.millis();
+    }
+
+    private void enemyShoot(Sprite enemy) {
+        Sprite pew = new Sprite(shotDown, 10, 15);
+        pew.setPosition(enemy.getX(), enemy.getY() -5);
+        enemyShots.add(pew);
+        lastEnemyShot = TimeUtils.millis();
+    }
+
+    private void checkPlayerBounds() {
         if (playerSprite.getX() < 0) playerSprite.setX(0);
         if (playerSprite.getX() > SCREEN_WIDTH - playerSprite.getWidth()) playerSprite.setX(SCREEN_WIDTH - playerSprite.getWidth());
+    }
 
-        // handle player shot movement
-        wallCollisions(playerShots);
-        for (Sprite shot : playerShots) {
-            shot.setY(shot.getY() + 400 * Gdx.graphics.getDeltaTime());
-            if (shot.getY() > SCREEN_HEIGHT)
-                playerShots.removeValue(shot, true);
-
-            // UFO hit
-            if (shot.getBoundingRectangle().overlaps(ufo.getBoundingRectangle())) {
-                score += 300;
-                ufoTimer = TimeUtils.millis();
-                explosionSound.play(0.2f);
-                ufoDeathPartEffect.setPosition(ufo.getX(), ufo.getY());
-                ufoDeathPartEffect.start();
-                ufoSound.pause();
-                ufoUP = false;
-                ufo.setX(-50);
+    private void handleUFO() {
+        // spawn UFO quasi-randomly if 5 seconds has gone by and it is not up
+        if (TimeUtils.millis() - ufoTimer > MILLIS_BETWEEN_UFO_SPAWNS && !ufoUP) {
+            // choose UFO starting side
+            if (new Random().nextInt(RANDOM_UFO_SPAWN_CHANCE) == 1) {
+                if (new Random().nextInt(2) == 0) {
+                    ufo.setPosition(SCREEN_WIDTH - 15, SCREEN_HEIGHT - 40);
+                    ufoDirection = -1;
+                }
+                else {
+                    ufo.setPosition(0, SCREEN_HEIGHT - 40);
+                    ufoDirection = 1;
+                }
+                ufoUP = true;
+                ufoChangeTime = TimeUtils.millis();
+                ufoSound.loop(MEDIUM_VOLUME);
             }
         }
+        if (ufoUP)
+            animateUFO();
+    }
 
-        // handle enemy shot movement
-        wallCollisions(enemyShots);
-        for (Sprite shot : enemyShots) {
+    private void animateUFO() {
+        ufo.setX(ufo.getX() + (ufoDirection * 200) * Gdx.graphics.getDeltaTime());
+        if (ufo.getX() + 50 < 0 || ufo.getX() > SCREEN_WIDTH) {
+            ufoUP = false;
+            ufoTimer = TimeUtils.millis();
+            ufo.setX(-50);
+            ufoSound.pause();
+        }
+        // move ufo light every 0.1 seconds
+        if (TimeUtils.millis() - ufoChangeTime > 100) {
+            if (ufo.getTexture() == ufo0)
+                ufo.setTexture(ufo1);
+            else if (ufo.getTexture() == ufo1)
+                ufo.setTexture(ufo2);
+            else if (ufo.getTexture() == ufo2)
+                ufo.setTexture(ufo3);
+            else if (ufo.getTexture() == ufo3)
+                ufo.setTexture(ufo4);
+            else if (ufo.getTexture() == ufo4)
+                ufo.setTexture(ufo0);
+            // reset change timer
+            ufoChangeTime = TimeUtils.millis();
+        }
+    }
+
+    private void handlePlayerShots() {
+        Iterator<Sprite> iter = playerShots.iterator();
+        while(iter.hasNext()) {
+            Sprite shot = iter.next();
+            shot.setY(shot.getY() + MILLIS_BETWEEN_ENEMY_SHOTS * Gdx.graphics.getDeltaTime());
+            if (shot.getY() > SCREEN_HEIGHT) {
+                iter.remove();
+                return;
+            }
+            // check for enemy hits
+            if (enemies.removeIf(enemy -> shot
+                    .getBoundingRectangle()
+                    .overlaps(enemy.getBoundingRectangle()))) {
+                enemyHit(shot);
+                iter.remove();
+                return;
+            }
+            // check for wall hits
+            if (wallList.removeIf(wall -> Math.abs(shot.getX() - wall.getX()) < 8 &&
+                                            Math.abs(shot.getY() - wall.getY()) < 9)) {
+                wallHit(shot);
+                iter.remove();
+                return;
+            }
+            // check for UFO hit
+            if (shot.getBoundingRectangle().overlaps(ufo.getBoundingRectangle())) {
+                ufoHit();
+                iter.remove();
+            }
+        }
+    }
+
+    private void enemyHit(Sprite shot) {
+        explosionSound.play(LOW_VOLUME);
+        enemyVelocity +=1;
+        killCounter +=1;
+        invaderDeathPartEffect.setPosition(shot.getX() + shot.getWidth() / 2,shot.getY() + shot.getHeight() / 2);
+        invaderDeathPartEffect.setDuration(1);
+        invaderDeathPartEffect.start();
+        score += 30;
+    }
+
+    private void wallHit(Sprite sprite) {
+        explosionPartEffect.setPosition(sprite.getX(), sprite.getY());
+        explosionPartEffect.setDuration(1);
+        explosionPartEffect.start();
+        wallHitSound.play(LOW_VOLUME);
+    }
+
+    private void ufoHit() {
+        score += 300;
+        ufoTimer = TimeUtils.millis();
+        explosionSound.play(LOW_VOLUME);
+        ufoDeathPartEffect.setPosition(ufo.getX(), ufo.getY());
+        ufoDeathPartEffect.start();
+        ufoSound.pause();
+        ufoUP = false;
+        ufo.setX(-50);
+    }
+
+    private void handleEnemyShots() {
+        Iterator<Sprite> iter = enemyShots.iterator();
+        while(iter.hasNext()) {
+            Sprite shot = iter.next();
             shot.setY(shot.getY() - 300 * Gdx.graphics.getDeltaTime());
             if (shot.getY() < 0)
-                enemyShots.removeValue(shot, true);
-            if (shot.getBoundingRectangle().overlaps(playerSprite.getBoundingRectangle()) && !invincible) {
+                iter.remove();
+            else if (shot.getBoundingRectangle().overlaps(playerSprite.getBoundingRectangle()) && !invincible) {
                 dead = true;
-                enemyShots.removeValue(shot, true);
+                iter.remove();
+            }
+            else if (wallList.removeIf(wall -> (Math.abs(shot.getX() - wall.getX()) < 8) &&
+                                               (Math.abs(shot.getY() - wall.getY()) < 9))) {
+                wallHit(shot);
+                iter.remove();
+                return;
             }
         }
+    }
 
-        // handle player invincibility after being shot
+    private void checkInvincibility() {
         if (invincible) {
             // expire invincibility after 3 seconds
-            if (TimeUtils.millis() - invincibleTimer > 3000) {
+            if (TimeUtils.millis() - invincibleTimer > INVINCIBILITY_TIME) {
                 invincible = false;
                 playerAlpha = 1;
             }
             // Flash player sprite every .1 seconds
-            if (TimeUtils.millis() - flashtimer > 100) {
+            if (TimeUtils.millis() - flashTimer > FLASH_TIME) {
                 if (playerAlpha == 0)   { playerAlpha = 1; }
                 else                    { playerAlpha = 0; }
-                flashtimer = TimeUtils.millis();
+                flashTimer = TimeUtils.millis();
             }
         }
-        // enemy animation handling
-        int randint;
+    }
+
+    private void animateEnemies() {
+
         for (Sprite enemy : enemies) {
-            if (!invincible && (enemy.getBoundingRectangle().overlaps(playerSprite.getBoundingRectangle()) || enemy.getY() < 10)) {
+            if (!invincible && (enemy.getBoundingRectangle().overlaps(playerSprite.getBoundingRectangle()) || enemy.getY() < ENEMY_PLAYER_OVERLAP_HEIGHT)) {
                 dead = true;
             }
 
-            // randomly pick an enemy to shoot after 0.4 second has passed
-            if (TimeUtils.millis() - lastEnemyShot > 400) {
-                randint = rand.nextInt(10);
-                if (randint == 1)
+            // randomly pick an enemy to shoot after a certain time has passed
+            if (TimeUtils.millis() - lastEnemyShot > MILLIS_BETWEEN_ENEMY_SHOTS) {
+                if (new Random().nextInt(10) == 1)
                     enemyShoot(enemy);
             }
 
-            // check for player shot and enemy collisions
-            for (Sprite shot: playerShots)
-                if (shot.getBoundingRectangle().overlaps(enemy.getBoundingRectangle())) {
-                    explosionSound.play(0.2f);
-                    enemies.removeValue(enemy,true);
-                    playerShots.removeValue(shot, true);
-                    enemyVelocity +=1;
-                    killCounter +=1;
-                    invaderDeathPartEffect.setPosition(enemy.getX() + enemy.getWidth() / 2,enemy.getY() + enemy.getHeight() / 2);
-                    invaderDeathPartEffect.setDuration(1);
-                    invaderDeathPartEffect.start();
-                    if (enemy.getTexture() == smallInvaderDown || enemy.getTexture() == smallInvaderUp) score += 40;
-                    if (enemy.getTexture() == bigInvaderDown || enemy.getTexture() == bigInvaderUp)     score += 30;
-
-            }
             // move enemies
             enemy.setX(enemy.getX() +(2.5f * enemyVelocity + 100) * Gdx.graphics.getDeltaTime() * direction);
 
             // set final enemy speeds
-            if (enemies.size == 1) {
-                killCounter = 63;
+            if (enemies.size() == 1) {
+                killCounter = KILL_COUNTER_HIGH;
                 enemies.get(0).setX(enemies.get(0).getX() + (340 * Gdx.graphics.getDeltaTime()) * direction);
             }
-            else if (enemies.size == 5) {
-                killCounter = 56;
-                enemyVelocity = 100;
+            else if (enemies.size() == 5) {
+                killCounter = KILL_COUNTER_MEDIUM;
+                enemyVelocity = ENEMY_HIGH_VELOCITY;
             }
 
             // reverse direction and set down flag to true if an enemy his the edge
             if (enemy.getX() < 0) {
-                direction = 1;
+                direction = RIGHT;
                 down = true;
             }
             if (enemy.getX() > SCREEN_WIDTH - enemy.getWidth()) {
-                direction = -1;
+                direction = LEFT;
                 down = true;
             }
         }
@@ -459,75 +533,29 @@ public class GameScreen implements Screen {
                 else                                            enemy.setTexture(smallInvaderUp);
             }
             if (invaderSoundTracker == 1)
-                invaderSound1.play(0.2f);
+                invaderSound1.play(LOW_VOLUME);
             else if (invaderSoundTracker == 2)
-                invaderSound2.play(0.2f);
+                invaderSound2.play(LOW_VOLUME);
             else if (invaderSoundTracker == 3)
-                invaderSound3.play(0.2f);
+                invaderSound3.play(LOW_VOLUME);
             else if (invaderSoundTracker == 4)
-                invaderSound4.play(0.2f);
+                invaderSound4.play(LOW_VOLUME);
             timeSinceChange = TimeUtils.millis();
             invaderSoundTracker++;
             if (invaderSoundTracker == 5) invaderSoundTracker = 1;
-        }
-        // spawn UFO quasi-randomly if 5 seconds has gone by and it is not up
-        if (TimeUtils.millis() - ufoTimer > 5000 && !ufoUP) {
-            randint = rand.nextInt(500);
-
-            // choose UFO starting side
-            if (randint == 1) {
-                if (rand.nextInt(2) == 0) {
-                    ufo.setPosition(SCREEN_WIDTH - 15, SCREEN_HEIGHT - 40);
-                    ufoDirection = -1;
-                }
-                else {
-                    ufo.setPosition(0, SCREEN_HEIGHT - 40);
-                    ufoDirection = 1;
-                }
-                ufoUP = true;
-                ufoChangeTime = TimeUtils.millis();
-                ufoSound.loop(0.05f);
-            }
-        }
-        // move UFO if up
-        if (ufoUP) {
-            ufo.setX(ufo.getX() + (ufoDirection * 200) * Gdx.graphics.getDeltaTime());
-            if (ufo.getX() + 50 < 0 || ufo.getX() > SCREEN_WIDTH) {
-                ufoUP = false;
-                ufoTimer = TimeUtils.millis();
-                ufo.setX(-50);
-                ufoSound.pause();
-            }
-            // move ufo light every 0.1 seconds
-            if (TimeUtils.millis() - ufoChangeTime > 100) {
-                if (ufo.getTexture() == ufo0)
-                    ufo.setTexture(ufo1);
-                else if (ufo.getTexture() == ufo1)
-                    ufo.setTexture(ufo2);
-                else if (ufo.getTexture() == ufo2)
-                    ufo.setTexture(ufo3);
-                else if (ufo.getTexture() == ufo3)
-                    ufo.setTexture(ufo4);
-                else if (ufo.getTexture() == ufo4)
-                    ufo.setTexture(ufo0);
-                ufoChangeTime = TimeUtils.millis();     // reset change timer
-            }
         }
     }
 
     @Override
     public void show() {
-
     }
 
     @Override
     public void resize(int width, int height) {
-
     }
 
     @Override
     public void pause() {
-
     }
 
     @Override
@@ -537,7 +565,6 @@ public class GameScreen implements Screen {
 
     @Override
     public void hide() {
-
     }
 
     @Override
