@@ -32,6 +32,14 @@ public class GameScreen implements Screen {
     private static final int RANDOM_UFO_SPAWN_CHANCE = 500;
     private static final float LOW_VOLUME = 0.2f;
     private static final float MEDIUM_VOLUME = 0.05f;
+    private static final int INVADER_WIDTH = 20;
+    private static final int INVADER_HEIGHT = 20;
+    private static final int PLAYER_Y_POSITION = 25;
+    private static final int UFO_FIXED_Y_POSITION = 40;
+    private static final int WALL_WIDTH = 70;
+    private static final int WALL_HEIGHT = 35;
+    private static final float ENEMY_VELOCITY_INCREMENT = 2.5f;
+    private static final int BASE_ENEMY_MOVEMENT_AMOUNT = 100;
     private final Invaders game;
 
     static int score = 0;
@@ -181,7 +189,7 @@ public class GameScreen implements Screen {
 
         // spawn player
         playerSprite = new Sprite(playerGIF);
-        playerSprite.setCenter(SCREEN_WIDTH / 2, 25);
+        playerSprite.setCenter(SCREEN_WIDTH / 2, PLAYER_Y_POSITION);
         gameOver = false;
         shootSpeed = 350;
         playerShots = new ArrayList<>();
@@ -194,8 +202,8 @@ public class GameScreen implements Screen {
         int[] starts = {50, 200, 350, 500};
         for (int startX : starts) {
             int startY = 70;
-            for (int row = 0; row < 35; row++) {
-                for (int column = 0; column < 70; column++) {
+            for (int row = 0; row < WALL_HEIGHT; row++) {
+                for (int column = 0; column < WALL_WIDTH; column++) {
                     // skip pixels for the gaps to make arch
                     if ((row < 10 && column > 10 && column < 60) ||
                             (row < 20 && column > 20 && column < 50) || (row < 30 && column > 30 && column < 40))
@@ -207,13 +215,13 @@ public class GameScreen implements Screen {
     }
 
     private void spawnBigInvader(int xPos, int yPos) {
-        bigInvader = new Sprite(bigInvaderDown, 20, 20);
+        bigInvader = new Sprite(bigInvaderDown, INVADER_WIDTH, INVADER_HEIGHT);
         bigInvader.setPosition(xPos, yPos);
         enemies.add(bigInvader);
     }
 
     private void spawnSmallInvader(int xPos, int yPos) {
-        smallInvader = new Sprite(smallInvaderDown, 20, 20);
+        smallInvader = new Sprite(smallInvaderDown, INVADER_WIDTH, INVADER_HEIGHT);
         smallInvader.setPosition(xPos,yPos);
         enemies.add(smallInvader);
     }
@@ -340,7 +348,7 @@ public class GameScreen implements Screen {
             // choose UFO starting side
             if (new Random().nextInt(RANDOM_UFO_SPAWN_CHANCE) == 1) {
                 if (new Random().nextInt(2) == 0) {
-                    ufo.setPosition(SCREEN_WIDTH - 15, SCREEN_HEIGHT - 40);
+                    ufo.setPosition(SCREEN_WIDTH - 15, SCREEN_HEIGHT - UFO_FIXED_Y_POSITION);
                     ufoDirection = -1;
                 }
                 else {
@@ -480,7 +488,8 @@ public class GameScreen implements Screen {
     private void animateEnemies() {
 
         for (Sprite enemy : enemies) {
-            if (!invincible && (enemy.getBoundingRectangle().overlaps(playerSprite.getBoundingRectangle()) || enemy.getY() < ENEMY_PLAYER_OVERLAP_HEIGHT)) {
+            if (!invincible && (enemy.getBoundingRectangle()
+                    .overlaps(playerSprite.getBoundingRectangle()) || enemy.getY() < ENEMY_PLAYER_OVERLAP_HEIGHT)) {
                 dead = true;
             }
 
@@ -491,7 +500,7 @@ public class GameScreen implements Screen {
             }
 
             // move enemies
-            enemy.setX(enemy.getX() +(2.5f * enemyVelocity + 100) * Gdx.graphics.getDeltaTime() * direction);
+            enemy.setX(enemy.getX() +(ENEMY_VELOCITY_INCREMENT * enemyVelocity + BASE_ENEMY_MOVEMENT_AMOUNT) * Gdx.graphics.getDeltaTime() * direction);
 
             // set final enemy speeds
             if (enemies.size() == 1) {
