@@ -19,7 +19,6 @@ import static invaders.game.Invaders.SCREEN_WIDTH;
 
 public class GameScreen implements Screen {
 
-    private static final int MILLIS_BETWEEN_ENEMY_SHOTS = 400;
     private static final int ENEMY_PLAYER_OVERLAP_HEIGHT = 10;
     private static final int KILL_COUNTER_HIGH = 63;
     private static final int KILL_COUNTER_MEDIUM = 56;
@@ -51,6 +50,7 @@ public class GameScreen implements Screen {
     private int shootSpeed;
     private int playerAlpha;
     private int killCounter;
+    private int MILLIS_BETWEEN_ENEMY_SHOTS = 400;
 
     private boolean ufoUP;
     private boolean down;
@@ -176,6 +176,19 @@ public class GameScreen implements Screen {
         invaderSoundTracker = 1;
 
         // spawn initial enemies
+        spawnInitialEnemies();
+
+
+        // spawn player
+        playerSprite = new Sprite(playerGIF);
+        playerSprite.setCenter(SCREEN_WIDTH / 2, PLAYER_Y_POSITION);
+        gameOver = false;
+        shootSpeed = 350;
+        playerShots = new ArrayList<>();
+        addWalls();
+    }
+
+    private void spawnInitialEnemies() {
         enemies = new ArrayList<>();
         for (int row = 0; row < 5; row++) {
             for (int column = 0; column < 12; column++) {
@@ -186,18 +199,11 @@ public class GameScreen implements Screen {
         // initialize velocity multiplier to 1
         enemyVelocity = 1;
         killCounter = 0;
-
-        // spawn player
-        playerSprite = new Sprite(playerGIF);
-        playerSprite.setCenter(SCREEN_WIDTH / 2, PLAYER_Y_POSITION);
-        gameOver = false;
-        shootSpeed = 350;
-        playerShots = new ArrayList<>();
         enemyShots = new ArrayList<>();
-        addWalls();
+
     }
 
-    //TODO: Get rid of magic numbers here.  This is also still ugly as hell
+    //TODO: Get rid of magic numbers here.  This is also still super ugly
     private void addWalls() {
         int[] starts = {50, 200, 350, 500};
         for (int startX : starts) {
