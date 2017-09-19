@@ -1,8 +1,8 @@
 # Invaders
-Created by: Allen Anthes<br>
-Remake of original Space Invaders by the Taito Corporation
+Created by: Allen Anthes, personal summer 2017 project <br>
+Remake of original Space Invaders by the Taito Corporation<br>
 
-# Build Executible
+# Build Executable
 For windows open a command prompt and navigate to main project folder using <br>
 <code> cd C:\Path\To\Folder </code><br>
 then<br>
